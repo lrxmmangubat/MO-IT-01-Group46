@@ -1,5 +1,22 @@
 package basicpayrollsystem;
 
+/*
+ * MotorPH Basic Payroll System (FINAL SUBMISSION VERSION - TA)
+ *
+ * DESCRIPTION:
+ * This program reads employee and attendance data from CSV files,
+ * computes working hours based on company rules, calculates payroll
+ * for two cutoff periods (June 1–15 and June 16–30), and applies
+ * government deductions and withholding tax.
+ *
+ * FEEDBACK APPLIED:
+ * ✔ Meaningful comments
+ * ✔ Section headers for readability
+ * ✔ Explaind business rules (cutoff, lunch, tax)
+ * ✔ Removed rounding to 2 decimals in output display and show all values
+ * ✔ Clean and organized flow
+ */
+
 import java.io.*;
 import java.util.*;
 import java.time.*;
@@ -7,9 +24,14 @@ import java.time.format.DateTimeFormatter;
 
 public class BasicPayrollSystem {
 
+    // File paths for required CSV data
     static String empFile = "resources/MotorPH Employee Data - Employee Details.csv";
     static String attFile = "resources/MotorPH Employee Data - Attendance Record.csv";
 
+    // -----------------------------
+    // MAIN PROGRAM ENTRY
+    // -----------------------------
+    // handles login and routes user to correct menu
     public static void main(String[] args) {
 
         Scanner sc = new Scanner(System.in);
@@ -20,6 +42,7 @@ public class BasicPayrollSystem {
         System.out.print("Password: ");
         String password = sc.nextLine();
 
+        // Only allow valid system roles
         if (!password.equals("12345") ||
             !(username.equals("employee") || username.equals("payroll_staff"))) {
 
@@ -27,6 +50,7 @@ public class BasicPayrollSystem {
             return;
         }
 
+        // direct user to correct functionality
         if (username.equals("employee")) {
             employeeMenu(sc);
         } else {
@@ -36,6 +60,10 @@ public class BasicPayrollSystem {
         sc.close();
     }
 
+    // -----------------------------
+    // EMPLOYEE MENU
+    // -----------------------------
+    // allows employee to view personal information
     static void employeeMenu(Scanner sc) {
 
         System.out.println("\n1 Enter your employee number");
@@ -51,6 +79,10 @@ public class BasicPayrollSystem {
         }
     }
 
+    //------------------------------
+    // PAYROLL MENU
+    // -----------------------------
+    // allows payroll_staff to process payroll
     static void payrollMenu(Scanner sc) {
 
         while (true) {
@@ -83,11 +115,15 @@ public class BasicPayrollSystem {
         }
     }
 
+    // -----------------------------
+    // DISPLAY EMPLOYEE INFO
+    // -----------------------------
+    // reads employee CSV and displays basic details
     static void displayEmployee(String empNo) {
 
         try (BufferedReader br = new BufferedReader(new FileReader(empFile))) {
 
-            br.readLine();
+            br.readLine(); // Skip header row
             String line;
 
             while ((line = br.readLine()) != null) {
@@ -110,10 +146,16 @@ public class BasicPayrollSystem {
         }
     }
 
+    // -----------------------------
+    // MAIN PAYROLL LOGIC
+    // -----------------------------
     static void processPayroll(String empNo) {
 
         try {
 
+            // ------------------------------
+            // SECTION 1: GET EMPLOYEE DATA
+            // ------------------------------
             BufferedReader empReader = new BufferedReader(new FileReader(empFile));
             String line;
 
@@ -149,6 +191,9 @@ public class BasicPayrollSystem {
                 return;
             }
 
+            // ------------------------------
+            // SECTION 2: ATTENDANCE PROCESSING
+            // ------------------------------
             double cutoff1Hours = 0;
             double cutoff2Hours = 0;
 
@@ -168,6 +213,7 @@ public class BasicPayrollSystem {
                 int month = Integer.parseInt(dateParts[0]);
                 int day = Integer.parseInt(dateParts[1]);
 
+                // Business rule: Only June payroll is required for this project
                 if (month != 6) continue;
 
                 LocalTime login = LocalTime.parse(data[4].trim(), timeFormat);
@@ -175,6 +221,7 @@ public class BasicPayrollSystem {
 
                 double hours = computeHours(login, logout);
 
+                // Split working hours into cutoff periods
                 if (day <= 15)
                     cutoff1Hours += hours;
                 else
@@ -183,56 +230,66 @@ public class BasicPayrollSystem {
 
             attReader.close();
 
-            cutoff1Hours = round2(cutoff1Hours);
-            cutoff2Hours = round2(cutoff2Hours);
-
-            double gross1 = round2(cutoff1Hours * hourlyRate);
-            double gross2 = round2(cutoff2Hours * hourlyRate);
+            // ------------------------------
+            // SECTION 3: PAYROLL COMPUTATION
+            // ------------------------------
+            double gross1 = cutoff1Hours * hourlyRate;
+            double gross2 = cutoff2Hours * hourlyRate;
 
             double monthlyGross = gross1 + gross2;
 
+            // Fixed government contributions based on provided specification
             double sss = 1125;
             double philhealth = 900;
             double pagibig = 100;
 
             double totalContributions = sss + philhealth + pagibig;
 
+            // Taxable income excludes mandatory contributions
             double taxableIncome = monthlyGross - totalContributions;
 
+            // Withholding tax is computed monthly and split between cutoffs
             double withholdingTax = computeWithholdingTax(taxableIncome) / 2;
 
-            double totalDeductions = round2(totalContributions + withholdingTax);
+            double totalDeductions = totalContributions + withholdingTax;
 
             double net1 = gross1;
-            double net2 = round2(gross2 - totalDeductions);
+            double net2 = gross2 - totalDeductions;
 
+            // ------------------------------
+            // SECTION 4: DISPLAY OUTPUT
+            // ------------------------------
             System.out.println("\nEmployee #: " + empNo);
             System.out.println("Employee Name: " + lastName + ", " + firstName);
             System.out.println("Birthday: " + birthday);
 
             System.out.println("\nCutoff Date: June 1 to 15");
-            System.out.printf("Total Hours Worked: %.2f hrs\n", cutoff1Hours);
-            System.out.printf("Gross Salary: %,.2f\n", gross1);
-            System.out.printf("Net Salary: %,.2f\n", net1);
+            System.out.println("Total Hours Worked: " + cutoff1Hours);
+            System.out.println("Gross Salary: " + gross1);
+            System.out.println("Net Salary: " + net1);
 
             System.out.println("\nCutoff Date: June 16 to 30");
-            System.out.printf("Total Hours Worked: %.2f hrs\n", cutoff2Hours);
-            System.out.printf("Gross Salary: %,.2f\n", gross2);
+            System.out.println("Total Hours Worked: " + cutoff2Hours);
+            System.out.println("Gross Salary: " + gross2);
 
             System.out.println("Each Deduction:");
-            System.out.printf("SSS: %,.2f\n", sss);
-            System.out.printf("PhilHealth: %,.2f\n", philhealth);
-            System.out.printf("Pag-IBIG: %,.2f\n", pagibig);
-            System.out.printf("Withholding Tax: %,.2f\n", withholdingTax);
+            System.out.println("SSS: " + sss);
+            System.out.println("PhilHealth: " + philhealth);
+            System.out.println("Pag-IBIG: " + pagibig);
+            System.out.println("Withholding Tax: " + withholdingTax);
 
-            System.out.printf("Total Deductions: %,.2f\n", totalDeductions);
-            System.out.printf("Net Salary: %,.2f\n", net2);
+            System.out.println("Total Deductions: " + totalDeductions);
+            System.out.println("Net Salary: " + net2);
 
         } catch (Exception e) {
             System.out.println("Error processing payroll.");
         }
     }
 
+    // -----------------------------
+    // WITHHOLDING TAX CALCULATION
+    // -----------------------------
+    // Applies Philippine tax table to compute correct tax amount
     static double computeWithholdingTax(double taxableIncome) {
 
         if (taxableIncome <= 20832) return 0;
@@ -252,6 +309,9 @@ public class BasicPayrollSystem {
         return 200833.33 + (taxableIncome - 666667) * 0.35;
     }
 
+    // -----------------------------
+    // PROCESS ALL EMPLOYEES
+    // -----------------------------
     static void processAllEmployees() {
 
         try (BufferedReader br = new BufferedReader(new FileReader(empFile))) {
@@ -270,26 +330,31 @@ public class BasicPayrollSystem {
         }
     }
 
+    // -----------------------------
+    // WORK HOURS COMPUTATION
+    // -----------------------------
     static double computeHours(LocalTime login, LocalTime logout) {
 
         LocalTime start = LocalTime.of(8, 0);
         LocalTime grace = LocalTime.of(8, 10);
         LocalTime end = LocalTime.of(17, 0);
 
+        // Grace period: arrivals within 10 minutes are not penalized
         if (!login.isAfter(grace)) login = start;
+
+        // Prevent early login advantage and ignore overtime
         if (login.isBefore(start)) login = start;
         if (logout.isAfter(end)) logout = end;
 
         double hours = Duration.between(login, logout).toMinutes() / 60.0;
 
+        // Mandatory 1-hour unpaid lunch break deduction
         if (hours > 1) hours -= 1.0;
+
+        // Maximum allowed working hours per day is 8
         if (hours > 8) hours = 8;
         if (hours < 0) hours = 0;
 
         return hours;
-    }
-
-    static double round2(double value) {
-        return Math.round(value * 100.0) / 100.0;
     }
 }
